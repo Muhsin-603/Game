@@ -1,11 +1,11 @@
 import os
 import time  # Add this for a small delay between frames
 
-def clear_screen():
+def clear_screen():# for adding the animation like feel by clearing the terminal each time
     # Clear command for Windows
     _ = os.system('cls')
 
-def move_player(move, p_r, p_c):
+def move_player(move, p_r, p_c):#to check where to move player movements "WASD"
     if move == 'W' and p_r > 0:
         p_r -= 1
     elif move == 'S' and p_r < 9:
@@ -17,7 +17,7 @@ def move_player(move, p_r, p_c):
     return p_r, p_c
 
 def print_grid(p_r, p_c):
-    for i in range(5):  # Changed to 5 rows
+    for i in range(5):  # change according to the need/adjust game field
         for j in range(5):
             if i == p_r and j == p_c:
                 print("@", end=" ")
