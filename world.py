@@ -1,5 +1,4 @@
 import os
-import time  # Add this for a small delay between frames
 import pygame
 import sys
 
@@ -15,20 +14,28 @@ CELL_SIZE = 40
 # Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-PLAYER_COLOR = (255, 0, 0)
 
 # Set up display
 screen = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Character Journey")
 
+# Load and scale player image
+try:
+    player_img = pygame.image.load(os.path.join('assets', 'Char 1.png'))
+    player_img = pygame.transform.scale(player_img, (CELL_SIZE, CELL_SIZE))
+except pygame.error as e:
+    print(f"Couldn't load player image: {e}")
+    sys.exit(1)
+
 def draw_grid(p_r, p_c):
     for i in range(GRID_ROWS):
         for j in range(GRID_COLS):
             rect = pygame.Rect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            if i == p_r and j == p_c:
-                pygame.draw.rect(screen, PLAYER_COLOR, rect)  # Draw player
-            else:
-                pygame.draw.rect(screen, WHITE, rect, 1)  # Draw grid cell
+            pygame.draw.rect(screen, WHITE, rect, 1)  # Draw grid cell
+    
+    # Draw player image instead of rectangle
+    player_pos = (p_c * CELL_SIZE, p_r * CELL_SIZE)
+    screen.blit(player_img, player_pos)
 
 def main():
     # Initialize player position
