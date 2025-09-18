@@ -97,3 +97,33 @@ Contributions are welcome! Whether you're fixing bugs, adding features, or impro
 - This project is under active development
 - Each phase will be tagged for easy reference
 - Watch this space for Pygame implementation updates!
+
+## 🎯 Recent Updates (September 18, 2025)
+
+### Completed Features:
+- Migrated from terminal-based to Pygame window system
+- Implemented proper game loop with event handling
+- Added smooth WASD movement controls
+- Created assets management system
+- Integrated custom character sprite
+- Added grid-based movement in graphical window
+
+### Current Requirements:
+- Pygame module: `pip install pygame`
+
+### Project Structure:
+```
+pygame/
+  ├── assets/         # Store game assets (images, sounds)
+  │   └── character.png
+  ├── character.py    # Character-specific code
+  ├── world.py        # Main game logic and window handling
+  └── README.md
+```
+
+### Controls:
+- W: Move Up
+- A: Move Left
+- S: Move Down
+- D: Move Right
+- Close window to exit game
