@@ -7,9 +7,16 @@ pygame.init()
 
 # Constants
 WINDOW_SIZE = (800, 600)
-GRID_COLS = 5
-GRID_ROWS = 10
+GRID_COLS = 20
+GRID_ROWS = 15
 CELL_SIZE = 40
+GAME_OVER_COLOR = (255, 0, 0)
+
+# Calculate grid offset to center it in window
+GRID_WIDTH = GRID_COLS * CELL_SIZE
+GRID_HEIGHT = GRID_ROWS * CELL_SIZE
+GRID_X_OFFSET = (WINDOW_SIZE[0] - GRID_WIDTH) // 2
+GRID_Y_OFFSET = (WINDOW_SIZE[1] - GRID_HEIGHT) // 2
 
 # Colors
 BLACK = (0, 0, 0)
@@ -21,53 +28,184 @@ pygame.display.set_caption("Character Journey")
 
 # Load and scale player image
 try:
-    player_img = pygame.image.load(os.path.join('assets', 'Char 1.png'))
+    player_img = pygame.image.load(os.path.join("assets", "Char 1.png"))
     player_img = pygame.transform.scale(player_img, (CELL_SIZE, CELL_SIZE))
 except pygame.error as e:
     print(f"Couldn't load player image: {e}")
     sys.exit(1)
 
-def draw_grid(p_r, p_c):
+# Enemy settings
+ENEMY_PATH = [(5, 5), (5, 15), (10, 15), (10, 5)]
+DETECTION_RANGE = 3
+ALTERNATE_PATH = [(2, 2), (2, 17), (12, 17), (12, 2)]
+
+# Load enemy sprite
+try:
+    enemy_img = pygame.image.load(os.path.join("assets", "enemy.png"))
+    enemy_img = pygame.transform.scale(enemy_img, (CELL_SIZE, CELL_SIZE))
+except pygame.error as e:
+    print(f"Couldn't load enemy image: {e}")
+    sys.exit(1)
+
+
+class Enemy:
+    def __init__(self):
+        self.path = ENEMY_PATH.copy()
+        self.current_point = 0
+        self.position = list(self.path[0])
+        self.is_alerted = False
+        self.chase_range = 1  # Distance to start chasing player
+
+    def move(self, player_pos):
+        """Move enemy towards player or along patrol path. Return True if player is caught."""
+        dist_row = abs(self.position[0] - player_pos[0])
+        dist_col = abs(self.position[1] - player_pos[1])
+
+        # Player caught
+        if dist_row == 0 and dist_col == 0:
+            return True
+
+        # Chase if player within 1 block
+        if dist_row <= self.chase_range and dist_col <= self.chase_range:
+            if self.position[0] < player_pos[0]:
+                self.position[0] += 1
+            elif self.position[0] > player_pos[0]:
+                self.position[0] -= 1
+            elif self.position[1] < player_pos[1]:
+                self.position[1] += 1
+            elif self.position[1] > player_pos[1]:
+                self.position[1] -= 1
+            return False
+
+        # Switch paths if player detected
+        if dist_row <= DETECTION_RANGE and dist_col <= DETECTION_RANGE:
+            if not self.is_alerted:
+                self.path = ALTERNATE_PATH.copy()
+                self.current_point = 0
+                self.is_alerted = True
+        else:
+            if self.is_alerted:
+                self.path = ENEMY_PATH.copy()
+                self.current_point = 0
+                self.is_alerted = False
+
+        # Patrol
+        target = self.path[self.current_point]
+        if self.position[0] < target[0]:
+            self.position[0] += 1
+        elif self.position[0] > target[0]:
+            self.position[0] -= 1
+        elif self.position[1] < target[1]:
+            self.position[1] += 1
+        elif self.position[1] > target[1]:
+            self.position[1] -= 1
+        else:
+            self.current_point = (self.current_point + 1) % len(self.path)
+
+        return False
+
+
+def draw_grid(p_r, p_c, enemy):
+    """Draw the grid, enemy, and player."""
     for i in range(GRID_ROWS):
         for j in range(GRID_COLS):
-            rect = pygame.Rect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
-            pygame.draw.rect(screen, WHITE, rect, 1)  # Draw grid cell
-    
-    # Draw player image instead of rectangle
-    player_pos = (p_c * CELL_SIZE, p_r * CELL_SIZE)
+            x = GRID_X_OFFSET + j * CELL_SIZE
+            y = GRID_Y_OFFSET + i * CELL_SIZE
+            rect = pygame.Rect(x, y, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, WHITE, rect, 1)
+
+    # Enemy
+    enemy_pos = (
+        GRID_X_OFFSET + enemy.position[1] * CELL_SIZE,
+        GRID_Y_OFFSET + enemy.position[0] * CELL_SIZE,
+    )
+    screen.blit(enemy_img, enemy_pos)
+
+    # Player
+    player_pos = (GRID_X_OFFSET + p_c * CELL_SIZE, GRID_Y_OFFSET + p_r * CELL_SIZE)
     screen.blit(player_img, player_pos)
 
+
+# Global variables for game state
+global_p_r = 2
+global_p_c = 2
+global_enemy = None
+global_game_over = False
+
+
+def reset_game():
+    """Reset player and enemy to starting positions."""
+    global global_p_r, global_p_c, global_enemy, global_game_over
+    global_p_r = 2
+    global_p_c = 2
+    global_enemy = Enemy()
+    global_game_over = False
+    return global_p_r, global_p_c, global_enemy, global_game_over
+
+
+def check_game_over():
+    """Return True if player is out of bounds or caught by the enemy."""
+    if (
+        global_p_r < 0
+        or global_p_r >= GRID_ROWS
+        or global_p_c < 0
+        or global_p_c >= GRID_COLS
+    ):
+        return True
+    return global_enemy.move((global_p_r, global_p_c))
+
+
+def draw_game_over():
+    font = pygame.font.Font(None, 74)
+    text = font.render("Game Over", True, GAME_OVER_COLOR)
+    text_rect = text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2))
+    screen.blit(text, text_rect)
+
+    font_small = pygame.font.Font(None, 36)
+    restart_text = font_small.render("Press SPACE to restart", True, WHITE)
+    restart_rect = restart_text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2 + 50))
+    screen.blit(restart_text, restart_rect)
+
+
 def main():
-    # Initialize player position
-    p_r, p_c = 2, 2
+    global global_p_r, global_p_c, global_enemy, global_game_over
+    global_p_r, global_p_c, global_enemy, global_game_over = reset_game()
     clock = pygame.time.Clock()
-    
-    # Game loop
     running = True
+
     while running:
-        screen.fill(BLACK)  # Clear screen
-        
-        # Event handling
+        screen.fill(BLACK)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_w and p_r > 0:
-                    p_r -= 1
-                elif event.key == pygame.K_s and p_r < GRID_ROWS - 1:
-                    p_r += 1
-                elif event.key == pygame.K_a and p_c > 0:
-                    p_c -= 1
-                elif event.key == pygame.K_d and p_c < GRID_COLS - 1:
-                    p_c += 1
-        
-        # Draw everything
-        draw_grid(p_r, p_c)
+                if event.key == pygame.K_SPACE:
+                    global_p_r, global_p_c, global_enemy, global_game_over = reset_game()
+                elif not global_game_over:
+                    old_pos = [global_p_r, global_p_c]
+                    if event.key == pygame.K_w and global_p_r > 0:
+                        global_p_r -= 1
+                    elif event.key == pygame.K_s and global_p_r < GRID_ROWS - 1:
+                        global_p_r += 1
+                    elif event.key == pygame.K_a and global_p_c > 0:
+                        global_p_c -= 1
+                    elif event.key == pygame.K_d and global_p_c < GRID_COLS - 1:
+                        global_p_c += 1
+
+                    if old_pos != [global_p_r, global_p_c]:
+                        global_game_over = check_game_over()
+
+        draw_grid(global_p_r, global_p_c, global_enemy)
+        if global_game_over:
+            draw_game_over()
+
         pygame.display.flip()
-        clock.tick(60)  # Limit to 60 FPS
-    
+        clock.tick(60)
+
     pygame.quit()
     sys.exit()
+
 
 if __name__ == "__main__":
     main()
