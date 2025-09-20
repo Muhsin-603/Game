@@ -47,6 +47,18 @@ except pygame.error as e:
     print(f"Couldn't load enemy image: {e}")
     sys.exit(1)
 
+# Load door image
+try:
+    door_img = pygame.image.load(os.path.join('assets', 'Door.png'))  # Note the capital 'D' if that's the actual filename
+    # Scale door image to fit two vertical cells
+    door_img = pygame.transform.scale(door_img, (CELL_SIZE, CELL_SIZE * 2))
+except pygame.error as e:
+    print(f"Couldn't load door image: {e}")
+    sys.exit(1)
+
+# Add door position constants
+DOOR_COL = GRID_COLS - 1  # Door at rightmost column
+DOOR_ROW = GRID_ROWS - 2  # Door position allowing 2 vertical cells
 
 class Enemy:
     def __init__(self):
@@ -106,16 +118,24 @@ class Enemy:
 
         return False
 
-
-
 def draw_grid(p_r, p_c, enemy):
     """Draw the grid, enemy, and player."""
     for i in range(GRID_ROWS):
         for j in range(GRID_COLS):
-            x = GRID_X_OFFSET + j * CELL_SIZE
-            y = GRID_Y_OFFSET + i * CELL_SIZE
-            rect = pygame.Rect(x, y, CELL_SIZE, CELL_SIZE)
+            rect = pygame.Rect(
+                GRID_X_OFFSET + j * CELL_SIZE,
+                GRID_Y_OFFSET + i * CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE,
+            )
             pygame.draw.rect(screen, WHITE, rect, 1)
+
+    # Draw door (before player and enemy to layer correctly)
+    door_pos = (
+        GRID_X_OFFSET + DOOR_COL * CELL_SIZE,
+        GRID_Y_OFFSET + DOOR_ROW * CELL_SIZE,
+    )
+    screen.blit(door_img, door_pos)
 
     # Enemy
     enemy_pos = (
@@ -125,9 +145,15 @@ def draw_grid(p_r, p_c, enemy):
     screen.blit(enemy_img, enemy_pos)
 
     # Player
-    player_pos = (GRID_X_OFFSET + p_c * CELL_SIZE, GRID_Y_OFFSET + p_r * CELL_SIZE)
+    player_pos = (
+        GRID_X_OFFSET + p_c * CELL_SIZE,
+        GRID_Y_OFFSET + p_r * CELL_SIZE,
+    )
     screen.blit(player_img, player_pos)
 
+def check_win(p_r, p_c):
+    """Check if player has reached the door"""
+    return p_c == DOOR_COL and (p_r == DOOR_ROW or p_r == DOOR_ROW + 1)
 
 # Global variables for game state
 global_p_r = 2
@@ -168,7 +194,16 @@ def draw_game_over():
     restart_text = font_small.render("Press SPACE to restart", True, WHITE)
     restart_rect = restart_text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2 + 50))
     screen.blit(restart_text, restart_rect)
+def draw_you_win():
+    font = pygame.font.Font(None, 74)
+    text = font.render("You Win!", True, (0, 255, 0))
+    text_rect = text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2))
+    screen.blit(text, text_rect)
 
+    font_small = pygame.font.Font(None, 36)
+    restart_text = font_small.render("Press SPACE to restart", True, WHITE)
+    restart_rect = restart_text.get_rect(center=(WINDOW_SIZE[0] / 2, WINDOW_SIZE[1] / 2 + 50))
+    screen.blit(restart_text, restart_rect)
 
 def main():
     global global_p_r, global_p_c, global_enemy, global_game_over
@@ -178,7 +213,7 @@ def main():
 
     while running:
         screen.fill(BLACK)
-
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -195,14 +230,28 @@ def main():
                         global_p_c -= 1
                     elif event.key == pygame.K_d and global_p_c < GRID_COLS - 1:
                         global_p_c += 1
-
+                    
+                    # Move enemy when player moves
                     if old_pos != [global_p_r, global_p_c]:
-                        global_game_over = check_game_over()
+                        global_game_over = global_enemy.move((global_p_r, global_p_c))
+                        
+                        # Check for win condition after movement
+                        if check_win(global_p_r, global_p_c):
+                            # Handle win condition (you can add your own win screen)
+                            print("You Win!")
+                            global_game_over = True
 
         draw_grid(global_p_r, global_p_c, global_enemy)
         if global_game_over:
-            draw_game_over()
-
+            if check_win(global_p_r, global_p_c):
+                # Draw win screen
+                font = pygame.font.Font(None, 74)
+                text = font.render('You Win!', True, (0, 255, 0))
+                text_rect = text.get_rect(center=(WINDOW_SIZE[0]/2, WINDOW_SIZE[1]/2))
+                screen.blit(text, text_rect)
+            else:
+                draw_game_over()
+                
         pygame.display.flip()
         clock.tick(60)
 
