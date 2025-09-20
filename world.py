@@ -57,15 +57,15 @@ class Enemy:
         self.chase_range = 1  # Distance to start chasing player
 
     def move(self, player_pos):
-        """Move enemy towards player or along patrol path. Return True if player is caught."""
+        """Move enemy towards player or patrol. Return True if player is caught."""
         dist_row = abs(self.position[0] - player_pos[0])
         dist_col = abs(self.position[1] - player_pos[1])
 
-        # Player caught
+        # ✅ Check if player is already caught
         if dist_row == 0 and dist_col == 0:
-            return True
+            return True   # enemy is standing on the player
 
-        # Chase if player within 1 block
+        # ✅ Chase if player is near
         if dist_row <= self.chase_range and dist_col <= self.chase_range:
             if self.position[0] < player_pos[0]:
                 self.position[0] += 1
@@ -75,9 +75,11 @@ class Enemy:
                 self.position[1] += 1
             elif self.position[1] > player_pos[1]:
                 self.position[1] -= 1
-            return False
 
-        # Switch paths if player detected
+            # Check again after moving
+            return self.position == list(player_pos)
+
+        # ✅ Switch patrol path if player in detection range
         if dist_row <= DETECTION_RANGE and dist_col <= DETECTION_RANGE:
             if not self.is_alerted:
                 self.path = ALTERNATE_PATH.copy()
@@ -89,7 +91,7 @@ class Enemy:
                 self.current_point = 0
                 self.is_alerted = False
 
-        # Patrol
+        # ✅ Patrol movement
         target = self.path[self.current_point]
         if self.position[0] < target[0]:
             self.position[0] += 1
@@ -103,6 +105,7 @@ class Enemy:
             self.current_point = (self.current_point + 1) % len(self.path)
 
         return False
+
 
 
 def draw_grid(p_r, p_c, enemy):
